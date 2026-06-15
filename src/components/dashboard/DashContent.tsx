@@ -45,10 +45,7 @@ function timeAgo(iso?: string | null) {
 }
 
 function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
+  return "Welcome back";
 }
 
 // Tiny inline sparkline
@@ -216,7 +213,7 @@ export function DashContent() {
               })}
             </p>
             <h1 className="font-display mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">
-              {greeting()}, {userName.split(" ")[0]}{" "}
+              {greeting()}, {userName}{" "}
               <span className="inline-block animate-float">👋</span>
             </h1>
             <p className="mt-3 max-w-lg text-sm text-white/85 sm:text-base">
@@ -228,7 +225,7 @@ export function DashContent() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 to="/mcq-practice"
-                className="group inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-foreground shadow-card-soft transition-all hover:scale-[1.03] hover:shadow-glow"
+                className="group inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black shadow-card-soft transition-all hover:scale-[1.03] hover:shadow-glow"
               >
                 <Zap className="h-4 w-4 text-[var(--neon-purple)]" />
                 Start Practice
