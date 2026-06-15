@@ -71,7 +71,10 @@ export type ChatMessage = {
   read_at: string | null;
   is_deleted: boolean;
   created_at: string;
+  sender_name?: string | null;
+  sender_role?: string | null;
 };
+
 
 export type ChatNote = {
   id: string;
