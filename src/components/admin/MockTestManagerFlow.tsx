@@ -1936,9 +1936,6 @@ function MockBuilderDialog({
   function toggleMcq(id: string) {
     setSelectedMcqIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
-  function selectAllMcqs() {
-    setSelectedMcqIds(Array.from(new Set([...selectedMcqIds, ...mcqs.map((m) => m.id)])));
-  }
   function clearMcqs() {
     setSelectedMcqIds([]);
   }
