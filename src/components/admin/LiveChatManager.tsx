@@ -287,9 +287,9 @@ export function LiveChatManager() {
   };
 
   return (
-    <div className="grid h-[calc(100vh-8rem)] grid-cols-12 gap-3 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+    <div className="grid h-[calc(100dvh-10rem)] min-h-[480px] grid-cols-12 gap-3 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
       {/* ──────────── LEFT: Filter + list ──────────── */}
-      <aside className="col-span-12 flex h-full flex-col border-r border-border md:col-span-4 lg:col-span-3">
+      <aside className="col-span-12 flex h-full min-h-0 flex-col border-r border-border md:col-span-4 lg:col-span-3">
         <div className="border-b border-border p-3">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -317,7 +317,7 @@ export function LiveChatManager() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {convsQ.isLoading && (
             <div className="flex justify-center p-6">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -394,7 +394,7 @@ export function LiveChatManager() {
       </aside>
 
       {/* ──────────── CENTER: Thread ──────────── */}
-      <section className="col-span-12 flex h-full flex-col md:col-span-5 lg:col-span-6">
+      <section className="col-span-12 flex h-full min-h-0 flex-col md:col-span-5 lg:col-span-6">
         {!conv ? (
           <div className="flex flex-1 items-center justify-center text-muted-foreground">
             Select a conversation
@@ -452,7 +452,7 @@ export function LiveChatManager() {
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-background px-4 py-4">
+            <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background px-4 py-4">
               {msgsQ.isLoading && (
                 <div className="flex justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -502,7 +502,7 @@ export function LiveChatManager() {
             </div>
 
             {/* Composer */}
-            <div className="border-t border-border bg-card px-3 py-3">
+            <div className="sticky bottom-0 shrink-0 border-t border-border bg-card px-3 py-3">
               {tab === "reply" ? (
                 <div className="flex items-end gap-2">
                   <Textarea
@@ -577,7 +577,7 @@ export function LiveChatManager() {
       </section>
 
       {/* ──────────── RIGHT: Details / actions ──────────── */}
-      <aside className="col-span-12 hidden h-full flex-col gap-4 overflow-y-auto border-l border-border p-4 md:col-span-3 md:flex">
+      <aside className="col-span-12 hidden h-full min-h-0 flex-col gap-4 overflow-y-auto border-l border-border p-4 md:col-span-3 md:flex">
         {!conv ? (
           <p className="text-sm text-muted-foreground">No conversation selected</p>
         ) : (
