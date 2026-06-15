@@ -111,7 +111,8 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
     const list = (rows as unknown as Row[] | null) ?? [];
     return list.map((r) => {
       const ch = Array.isArray(r.chapters) ? r.chapters[0] : r.chapters;
-      const sub = ch && Array.isArray(ch.subjects) ? ch.subjects[0] : ch?.subjects ?? null;
+      const subRaw = ch && Array.isArray(ch.subjects) ? ch.subjects[0] : ch?.subjects ?? null;
+      const sub = (subRaw ?? null) as { id: string; name: string } | null;
       return {
         id: r.id,
         question: r.question,
@@ -123,6 +124,7 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
         subject_name: sub?.name ?? null,
       };
     });
+
 
 
   });
