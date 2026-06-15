@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   Bot,
   Sparkles,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,7 @@ import {
   listConversationMessages,
   userSendMessage,
   userMarkRead,
+  userHideConversation,
   type ChatConversation,
   type ChatMessage,
   type ChatSettings,
