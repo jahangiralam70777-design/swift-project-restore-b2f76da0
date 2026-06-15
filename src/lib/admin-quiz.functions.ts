@@ -429,15 +429,19 @@ const autoGenInput = z
     level: z.string().trim().max(40).nullable().optional(),
     subjectId: z.string().uuid().nullable().optional(),
     chapterId: z.string().uuid().nullable().optional(),
+    chapterIds: z.array(z.string().uuid()).max(500).optional(),
     questionCount: z.number().int().min(1).max(200).default(10),
     durationMinutes: z.number().int().min(1).max(360).default(15),
     overwrite: z.boolean().default(true),
     publish: z.boolean().default(true),
     randomizeOptions: z.boolean().default(true),
   })
-  .refine((v) => !!(v.chapterId || v.subjectId || v.level), {
-    message: "A level, subject, or chapter scope is required",
-  });
+  .refine(
+    (v) => !!(v.chapterId || (v.chapterIds && v.chapterIds.length > 0) || v.subjectId || v.level),
+    {
+      message: "A level, subject, or chapter scope is required",
+    },
+  );
 
 export const adminAutoGenerateQuizzes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -447,7 +451,9 @@ export const adminAutoGenerateQuizzes = createServerFn({ method: "POST" })
     const sb = context.supabase;
 
     let chapterIds: string[] = [];
-    if (data.chapterId) {
+    if (data.chapterIds && data.chapterIds.length > 0) {
+      chapterIds = Array.from(new Set(data.chapterIds));
+    } else if (data.chapterId) {
       chapterIds = [data.chapterId];
     } else if (data.subjectId) {
       const { data: ch, error } = await sb
