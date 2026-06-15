@@ -246,9 +246,25 @@ export const listMyConversations = createServerFn({ method: "GET" })
       .from("live_chat_conversations")
       .select("*")
       .eq("user_id", context.userId)
+      .is("user_hidden_at", null)
       .order("last_message_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (data ?? []) as ChatConversation[];
+  });
+
+// Student-side soft delete: hide conversation from the current user's view only.
+// Admin/staff queries use the service role and continue to see the conversation.
+export const userHideConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => conversationIdSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await asAny(context.supabase)
+      .from("live_chat_conversations")
+      .update({ user_hidden_at: new Date().toISOString() })
+      .eq("id", data.conversation_id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const startConversationSchema = z
