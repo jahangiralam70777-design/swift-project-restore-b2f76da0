@@ -1304,13 +1304,18 @@ function QuickQuizGeneratorPanel({
   onDone: () => void;
 }) {
   const autoGenFn = useServerFn(adminAutoGenerateQuizzes);
+  const allChaptersFn = useServerFn(adminListAllChapters);
+  const qc = useQueryClient();
   const [level, setLevel] = useState<string>(levels[0]?.code ?? "");
   const [time, setTime] = useState<string>("10");
   const [count, setCount] = useState<string>("10");
-  const [scope, setScope] = useState<string>("all");
   const [subj, setSubj] = useState<string>("all");
   const [dist, setDist] = useState<"random" | "smart">("random");
   const [adv, setAdv] = useState(false);
+  const [pickedChapterIds, setPickedChapterIds] = useState<Set<string>>(new Set());
+  const [chapterSearch, setChapterSearch] = useState("");
+  const [recentOnly, setRecentOnly] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
 
   useEffect(() => {
     if (!level && levels[0]) setLevel(levels[0].code);
@@ -1321,20 +1326,122 @@ function QuickQuizGeneratorPanel({
     [subjects, level],
   );
 
+  // Always fetch fresh chapter list keyed by current level + subject, so newly
+  // added/updated chapters appear without a manual refresh.
+  const chaptersQ = useQuery({
+    queryKey: ["admin-all-chapters", { level, subj }],
+    queryFn: () =>
+      allChaptersFn({
+        data: { level: level || null, subjectId: subj !== "all" ? subj : null },
+      }),
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  // Realtime: any chapter insert/update/delete invalidates the picker list.
+  useEffect(() => {
+    const ch = supabase
+      .channel(`quiz-gen-chapters-${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chapters" }, () => {
+        qc.invalidateQueries({ queryKey: ["admin-all-chapters"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [qc]);
+
+  const allChapters = (chaptersQ.data ?? []) as Array<{
+    id: string;
+    name: string;
+    subject_id: string;
+    status: string;
+    updated_at: string;
+  }>;
+
+  const subjectName = useMemo(() => {
+    const m = new Map(subjects.map((s) => [s.id, s.name]));
+    return (id: string) => m.get(id) ?? "—";
+  }, [subjects]);
+
+  const recentCutoff = useMemo(() => Date.now() - 7 * 24 * 3600 * 1000, []);
+  const visibleChapters = useMemo(() => {
+    const q = chapterSearch.trim().toLowerCase();
+    return allChapters.filter((c) => {
+      if (recentOnly && new Date(c.updated_at).getTime() < recentCutoff) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) || subjectName(c.subject_id).toLowerCase().includes(q)
+      );
+    });
+  }, [allChapters, chapterSearch, recentOnly, recentCutoff, subjectName]);
+
+  const allVisibleSelected =
+    visibleChapters.length > 0 && visibleChapters.every((c) => pickedChapterIds.has(c.id));
+  const someVisibleSelected =
+    !allVisibleSelected && visibleChapters.some((c) => pickedChapterIds.has(c.id));
+
+  // Drop selections that are no longer in the available chapter set (e.g. after
+  // a chapter was deleted or filters changed scope) to prevent stale ids.
+  useEffect(() => {
+    if (pickedChapterIds.size === 0) return;
+    const valid = new Set(allChapters.map((c) => c.id));
+    let changed = false;
+    const next = new Set<string>();
+    pickedChapterIds.forEach((id) => {
+      if (valid.has(id)) next.add(id);
+      else changed = true;
+    });
+    if (changed) setPickedChapterIds(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allChapters]);
+
+  const toggleChapter = (id: string) => {
+    setPickedChapterIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    setPickedChapterIds((prev) => {
+      const next = new Set(prev);
+      visibleChapters.forEach((c) => next.add(c.id));
+      return next;
+    });
+  };
+  const clearAll = () => setPickedChapterIds(new Set());
+
+  const sourceLabel = (() => {
+    if (pickedChapterIds.size === 0) return "All Chapters";
+    if (pickedChapterIds.size === 1) {
+      const ch = allChapters.find((c) => pickedChapterIds.has(c.id));
+      return ch ? ch.name : "1 chapter";
+    }
+    return `${pickedChapterIds.size} chapters selected`;
+  })();
+
   const run = useMutation({
-    mutationFn: () =>
-      autoGenFn({
+    mutationFn: () => {
+      const ids = Array.from(pickedChapterIds);
+      // "All Chapters" = empty selection → fall back to subject/level scope.
+      // Individual picks override scope, so there is no overlap/duplication.
+      return autoGenFn({
         data: {
-          level: subj === "all" ? level : null,
-          subjectId: subj !== "all" ? subj : null,
+          level: ids.length === 0 && subj === "all" ? level : null,
+          subjectId: ids.length === 0 && subj !== "all" ? subj : null,
           chapterId: null,
+          chapterIds: ids.length > 0 ? ids : undefined,
           questionCount: Number(count) || 10,
           durationMinutes: Number(time) || 10,
           overwrite: true,
           publish: true,
           randomizeOptions: dist === "random",
         },
-      }),
+      });
+    },
     onSuccess: (r: { created: number; updated: number; skipped: number }) => {
       toast.success(
         `Generated · ${r.created} created · ${r.updated} updated · ${r.skipped} skipped`,
