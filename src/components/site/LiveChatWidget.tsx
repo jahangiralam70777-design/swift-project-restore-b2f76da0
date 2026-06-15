@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   Bot,
   Sparkles,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,7 @@ import {
   listConversationMessages,
   userSendMessage,
   userMarkRead,
+  userHideConversation,
   type ChatConversation,
   type ChatMessage,
   type ChatSettings,
@@ -112,6 +114,26 @@ export function LiveChatWidget() {
   const fetchMessages = useServerFn(listConversationMessages);
   const sendMsg = useServerFn(userSendMessage);
   const markRead = useServerFn(userMarkRead);
+  const hideConv = useServerFn(userHideConversation);
+
+  const hideMut = useMutation({
+    mutationFn: (conversation_id: string) => hideConv({ data: { conversation_id } }),
+    onMutate: async (conversation_id: string) => {
+      await qc.cancelQueries({ queryKey: ["chat", "my-conversations"] });
+      const prev = qc.getQueryData<ChatConversation[]>(["chat", "my-conversations"]);
+      qc.setQueryData<ChatConversation[]>(
+        ["chat", "my-conversations"],
+        (old) => (old ?? []).filter((c) => c.id !== conversation_id),
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["chat", "my-conversations"], ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["chat", "my-conversations"] });
+    },
+  });
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
@@ -399,10 +421,10 @@ export function LiveChatWidget() {
                   {conversations.map((c) => {
                     const unread = c.unread_for_user ?? 0;
                     return (
-                      <li key={c.id}>
+                      <li key={c.id} className="group relative">
                         <button
                           onClick={() => openConversation(c.id)}
-                          className="w-full px-4 py-3 text-left transition hover:bg-muted/60"
+                          className="w-full px-4 py-3 pr-10 text-left transition hover:bg-muted/60"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p className="truncate text-sm font-semibold text-foreground">
@@ -425,6 +447,27 @@ export function LiveChatWidget() {
                               </span>
                             )}
                           </div>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete conversation"
+                          title="Delete conversation"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (hideMut.isPending) return;
+                            const ok = window.confirm(
+                              "Delete this conversation from your inbox? Support staff will still have a record.",
+                            );
+                            if (!ok) return;
+                            if (activeConvId === c.id) {
+                              setActiveConvId(null);
+                              setView("picker");
+                            }
+                            hideMut.mutate(c.id);
+                          }}
+                          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition hover:bg-red-500/10 hover:text-red-600 focus:opacity-100 group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </li>
                     );
