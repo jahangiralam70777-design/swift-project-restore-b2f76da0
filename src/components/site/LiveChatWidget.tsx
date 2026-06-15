@@ -456,7 +456,7 @@ export function LiveChatWidget() {
                             e.stopPropagation();
                             if (hideMut.isPending) return;
                             const ok = window.confirm(
-                              "Delete this conversation from your inbox? Support staff will still have a record.",
+                              "Delete this conversation?",
                             );
                             if (!ok) return;
                             if (activeConvId === c.id) {
