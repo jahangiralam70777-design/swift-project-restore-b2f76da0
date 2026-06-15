@@ -88,7 +88,9 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
     if (chapterIds.length === 0) return [];
     let q = context.supabase
       .from("mcqs")
-      .select("id,question,difficulty,status,chapter_id,correct_option")
+      .select(
+        "id,question,difficulty,status,chapter_id,correct_option,chapters(id,name,subjects(id,name))",
+      )
       .in("chapter_id", chapterIds)
       .order("updated_at", { ascending: false })
       .limit(500);
@@ -96,7 +98,26 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
     if (data.search) q = q.ilike("question", `%${data.search}%`);
     const { data: rows, error } = await q;
     if (error) throw error;
-    return rows ?? [];
+    type Row = {
+      id: string;
+      question: string;
+      difficulty: string;
+      status: string;
+      chapter_id: string;
+      correct_option: number | null;
+      chapters?: { id: string; name: string; subjects?: { id: string; name: string } | null } | null;
+    };
+    return (rows as Row[] | null ?? []).map((r) => ({
+      id: r.id,
+      question: r.question,
+      difficulty: r.difficulty,
+      status: r.status,
+      chapter_id: r.chapter_id,
+      correct_option: r.correct_option,
+      chapter_name: r.chapters?.name ?? null,
+      subject_name: r.chapters?.subjects?.name ?? null,
+    }));
+
   });
 
 // ---------- Mocks (stored in quizzes with kind='mock') ----------
