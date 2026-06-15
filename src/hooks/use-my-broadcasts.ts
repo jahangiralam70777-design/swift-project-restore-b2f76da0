@@ -56,7 +56,23 @@ export function useMyBroadcasts(enabledOpt = true) {
     onSettled: () => qc.invalidateQueries({ queryKey: MY_BROADCASTS_KEY }),
   });
 
+  const hide = useMutation({
+    mutationFn: (recipientId: string) => hideFn({ data: { id: recipientId } }),
+    onMutate: async (rid) => {
+      await qc.cancelQueries({ queryKey: MY_BROADCASTS_KEY });
+      const prev = qc.getQueryData<MyBroadcast[]>(MY_BROADCASTS_KEY);
+      qc.setQueryData<MyBroadcast[]>(MY_BROADCASTS_KEY, (old) =>
+        (old ?? []).filter((b) => b.recipient_id !== rid),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(MY_BROADCASTS_KEY, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: MY_BROADCASTS_KEY }),
+  });
+
   const items = q.data ?? [];
   const unread = items.filter((b) => !b.read_at).length;
-  return { items, unread, isLoading: q.isLoading, markRead };
+  return { items, unread, isLoading: q.isLoading, markRead, hide };
 }
