@@ -460,45 +460,81 @@ export function LiveChatManager() {
               )}
               {messages.map((m) => {
                 const isStaff = m.sender_type === "staff";
+                const isSystem = m.sender_type === "system";
+                const isSelf = isStaff && m.sender_user_id && m.sender_user_id === perms.userId;
+                const role = (m.sender_role ?? "").toLowerCase();
+                let label: string;
+                if (isSystem) {
+                  label = "System";
+                } else if (isStaff) {
+                  if (isSelf) label = "You (Admin)";
+                  else if (role === "super_admin") label = "Super Admin";
+                  else if (role === "admin") label = "Admin";
+                  else if (role === "moderator") label = "Moderator";
+                  else label = "Staff";
+                } else {
+                  label = "Student";
+                }
+                const name =
+                  m.sender_name ||
+                  (isStaff ? "Support" : conv?.guest_name || profile?.display_name || "Student");
+                const align = isStaff ? "items-end" : "items-start";
+                const justify = isStaff ? "justify-end" : "justify-start";
                 return (
-                  <div
-                    key={m.id}
-                    className={`group flex ${isStaff ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`relative max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                        isStaff
-                          ? "rounded-br-sm bg-primary text-primary-foreground"
-                          : "rounded-bl-sm border border-border bg-card text-card-foreground"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                      <p
-                        className={`mt-1 text-[10px] ${
-                          isStaff ? "text-primary-foreground/85" : "text-foreground/70"
+                  <div key={m.id} className={`group flex ${justify}`}>
+                    <div className={`flex max-w-[80%] flex-col ${align}`}>
+                      <div
+                        className={`mb-1 flex items-center gap-1.5 px-1 text-[11px] ${isStaff ? "flex-row-reverse" : ""}`}
+                      >
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            isStaff
+                              ? "bg-primary/15 text-primary"
+                              : isSystem
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                          }`}
+                        >
+                          {label}
+                        </span>
+                        <span className="font-medium text-foreground/80">{name}</span>
+                      </div>
+                      <div
+                        className={`relative rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                          isStaff
+                            ? "rounded-br-sm bg-primary text-primary-foreground"
+                            : "rounded-bl-sm border border-border bg-card text-card-foreground"
                         }`}
                       >
-                        {fmtTime(m.created_at)}
-                        {isStaff && m.read_at ? " · Seen" : ""}
-                      </p>
-                      {perms.canDelete && (
-                        <button
-                          onClick={() => {
-                            if (confirm("Permanently delete this message?")) {
-                              deleteMessageMut.mutate(m.id);
-                            }
-                          }}
-                          className={`absolute -top-2 ${isStaff ? "-left-2" : "-right-2"} hidden h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex`}
-                          aria-label="Delete message"
-                          title="Delete message (super admin)"
+                        <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                        <p
+                          className={`mt-1 text-[10px] ${
+                            isStaff ? "text-primary-foreground/85" : "text-foreground/70"
+                          }`}
                         >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
+                          {fmtTime(m.created_at)}
+                          {isStaff && m.read_at ? " · Seen" : ""}
+                        </p>
+                        {perms.canDelete && (
+                          <button
+                            onClick={() => {
+                              if (confirm("Permanently delete this message?")) {
+                                deleteMessageMut.mutate(m.id);
+                              }
+                            }}
+                            className={`absolute -top-2 ${isStaff ? "-left-2" : "-right-2"} hidden h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex`}
+                            aria-label="Delete message"
+                            title="Delete message (super admin)"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
               })}
+
             </div>
 
             {/* Composer */}
