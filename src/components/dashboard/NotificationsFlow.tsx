@@ -582,7 +582,7 @@ function Mini({ label, value }: { label: string; value: number }) {
 }
 
 function BroadcastsInbox() {
-  const { items, unread, markRead } = useMyBroadcasts();
+  const { items, unread, markRead, hide } = useMyBroadcasts();
   const [expanded, setExpanded] = useState(false);
   if (!items.length) return null;
   const sorted = [...items].sort((a, b) => {
