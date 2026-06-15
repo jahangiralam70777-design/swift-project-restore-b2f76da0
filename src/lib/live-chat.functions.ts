@@ -71,7 +71,10 @@ export type ChatMessage = {
   read_at: string | null;
   is_deleted: boolean;
   created_at: string;
+  sender_name?: string | null;
+  sender_role?: string | null;
 };
+
 
 export type ChatNote = {
   id: string;
@@ -640,8 +643,31 @@ export const adminListMessages = createServerFn({ method: "POST" })
       .eq("is_deleted", false)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
-    return (rows ?? []) as ChatMessage[];
+    const msgs = (rows ?? []) as ChatMessage[];
+    const ids = Array.from(
+      new Set(msgs.map((m) => m.sender_user_id).filter((x): x is string => !!x))
+    );
+    if (ids.length > 0) {
+      const [{ data: profs }, roles] = await Promise.all([
+        asAny(supabaseAdmin).from("profiles").select("id, display_name").in("id", ids),
+        lookupTopRoles(supabaseAdmin, ids),
+      ]);
+      const nameMap = new Map<string, string | null>(
+        ((profs ?? []) as Array<{ id: string; display_name: string | null }>).map((p) => [
+          p.id,
+          p.display_name,
+        ])
+      );
+      for (const m of msgs) {
+        if (m.sender_user_id) {
+          m.sender_name = nameMap.get(m.sender_user_id) ?? null;
+          m.sender_role = roles.get(m.sender_user_id) ?? null;
+        }
+      }
+    }
+    return msgs;
   });
+
 
 export const adminSendReply = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
