@@ -387,9 +387,47 @@ export const adminListChapters = createServerFn({ method: "POST" })
     await assertPermission(context.supabase, context.userId, "manage_content");
     const { data: rows, error } = await context.supabase
       .from("chapters")
-      .select("id,name,slug,description,sort_order,status,subject_id")
+      .select("id,name,slug,description,sort_order,status,subject_id,updated_at")
       .eq("subject_id", data.subjectId)
       .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return rows ?? [];
+  });
+
+// List ALL chapters across subjects (optionally filtered by level/subject).
+// Used by Quiz Generator → Select Source multi-picker so newly added/updated
+// chapters always appear immediately.
+export const adminListAllChapters = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { level?: string | null; subjectId?: string | null } | undefined) =>
+    z
+      .object({
+        level: z.string().trim().max(40).nullable().optional(),
+        subjectId: z.string().uuid().nullable().optional(),
+      })
+      .parse(i ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertPermission(context.supabase, context.userId, "manage_content");
+    const sb = context.supabase;
+    let subjectIds: string[] | null = null;
+    if (data.subjectId) {
+      subjectIds = [data.subjectId];
+    } else if (data.level) {
+      const { data: subs, error: se } = await sb
+        .from("subjects")
+        .select("id")
+        .eq("level", data.level);
+      if (se) throw se;
+      subjectIds = (subs ?? []).map((s: { id: string }) => s.id);
+      if (subjectIds.length === 0) return [];
+    }
+    let q = sb
+      .from("chapters")
+      .select("id,name,subject_id,status,sort_order,updated_at")
+      .order("updated_at", { ascending: false });
+    if (subjectIds) q = q.in("subject_id", subjectIds);
+    const { data: rows, error } = await q;
     if (error) throw error;
     return rows ?? [];
   });
