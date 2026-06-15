@@ -1994,7 +1994,7 @@ function MockBuilderDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {existing ? "Edit Mock Test" : "Create Mock Test"}
