@@ -98,6 +98,9 @@ import {
 import { BulkUploadMcqsDialog } from "./BulkUploadMcqsDialog";
 import { QuizKpiDetailDialog, type KpiMetric } from "./QuizKpiDetailDialog";
 import { confirmDialog } from "@/components/ui/confirm-imperative";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown } from "lucide-react";
 
 type Quiz = {
   id: string;
