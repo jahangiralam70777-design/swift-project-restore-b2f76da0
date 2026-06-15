@@ -452,7 +452,7 @@ export function LiveChatManager() {
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-background px-4 py-4">
+            <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background px-4 py-4">
               {msgsQ.isLoading && (
                 <div className="flex justify-center py-4">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -502,7 +502,7 @@ export function LiveChatManager() {
             </div>
 
             {/* Composer */}
-            <div className="border-t border-border bg-card px-3 py-3">
+            <div className="sticky bottom-0 shrink-0 border-t border-border bg-card px-3 py-3">
               {tab === "reply" ? (
                 <div className="flex items-end gap-2">
                   <Textarea
