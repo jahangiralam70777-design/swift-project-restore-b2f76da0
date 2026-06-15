@@ -317,7 +317,7 @@ export function LiveChatManager() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {convsQ.isLoading && (
             <div className="flex justify-center p-6">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
