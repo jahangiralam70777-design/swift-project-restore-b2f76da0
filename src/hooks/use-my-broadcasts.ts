@@ -11,6 +11,7 @@ export function useMyBroadcasts(enabledOpt = true) {
   const qc = useQueryClient();
   const listFn = useServerFn(listMyBroadcasts);
   const markFn = useServerFn(markBroadcastRead);
+  const hideFn = useServerFn(hideBroadcastForMe);
   const sessionReady = useAppStore((s) => s.sessionReady);
   const authLoading = useAppStore((s) => s.authLoading);
   const user = useAppStore((s) => s.user);
