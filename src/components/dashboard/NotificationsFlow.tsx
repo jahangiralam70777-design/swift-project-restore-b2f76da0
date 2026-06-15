@@ -653,7 +653,7 @@ function BroadcastsInbox() {
                 <button
                   onClick={() => {
                     if (hide.isPending) return;
-                    if (!window.confirm("Remove this broadcast from your inbox? Other students and admins are not affected.")) return;
+                    if (!window.confirm("Delete this notification?")) return;
                     hide.mutate(b.recipient_id);
                   }}
                   aria-label="Delete broadcast"
