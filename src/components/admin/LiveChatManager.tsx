@@ -577,7 +577,7 @@ export function LiveChatManager() {
       </section>
 
       {/* ──────────── RIGHT: Details / actions ──────────── */}
-      <aside className="col-span-12 hidden h-full flex-col gap-4 overflow-y-auto border-l border-border p-4 md:col-span-3 md:flex">
+      <aside className="col-span-12 hidden h-full min-h-0 flex-col gap-4 overflow-y-auto border-l border-border p-4 md:col-span-3 md:flex">
         {!conv ? (
           <p className="text-sm text-muted-foreground">No conversation selected</p>
         ) : (
