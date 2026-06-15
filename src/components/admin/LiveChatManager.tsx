@@ -394,7 +394,7 @@ export function LiveChatManager() {
       </aside>
 
       {/* ──────────── CENTER: Thread ──────────── */}
-      <section className="col-span-12 flex h-full flex-col md:col-span-5 lg:col-span-6">
+      <section className="col-span-12 flex h-full min-h-0 flex-col md:col-span-5 lg:col-span-6">
         {!conv ? (
           <div className="flex flex-1 items-center justify-center text-muted-foreground">
             Select a conversation
