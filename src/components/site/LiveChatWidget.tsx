@@ -114,6 +114,26 @@ export function LiveChatWidget() {
   const fetchMessages = useServerFn(listConversationMessages);
   const sendMsg = useServerFn(userSendMessage);
   const markRead = useServerFn(userMarkRead);
+  const hideConv = useServerFn(userHideConversation);
+
+  const hideMut = useMutation({
+    mutationFn: (conversation_id: string) => hideConv({ data: { conversation_id } }),
+    onMutate: async (conversation_id: string) => {
+      await qc.cancelQueries({ queryKey: ["chat", "my-conversations"] });
+      const prev = qc.getQueryData<ChatConversation[]>(["chat", "my-conversations"]);
+      qc.setQueryData<ChatConversation[]>(
+        ["chat", "my-conversations"],
+        (old) => (old ?? []).filter((c) => c.id !== conversation_id),
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["chat", "my-conversations"], ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["chat", "my-conversations"] });
+    },
+  });
 
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
