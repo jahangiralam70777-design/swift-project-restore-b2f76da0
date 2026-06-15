@@ -287,9 +287,9 @@ export function LiveChatManager() {
   };
 
   return (
-    <div className="grid h-[calc(100vh-8rem)] grid-cols-12 gap-3 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+    <div className="grid h-[calc(100dvh-10rem)] min-h-[480px] grid-cols-12 gap-3 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
       {/* ──────────── LEFT: Filter + list ──────────── */}
-      <aside className="col-span-12 flex h-full flex-col border-r border-border md:col-span-4 lg:col-span-3">
+      <aside className="col-span-12 flex h-full min-h-0 flex-col border-r border-border md:col-span-4 lg:col-span-3">
         <div className="border-b border-border p-3">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
