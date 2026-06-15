@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/stores/app-store";
-import { listMyBroadcasts, markBroadcastRead, type MyBroadcast } from "@/lib/broadcasts.functions";
+import { listMyBroadcasts, markBroadcastRead, hideBroadcastForMe, type MyBroadcast } from "@/lib/broadcasts.functions";
 
 export const MY_BROADCASTS_KEY = ["my-broadcasts"] as const;
 
