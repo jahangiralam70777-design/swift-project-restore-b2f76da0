@@ -98,6 +98,7 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
     if (data.search) q = q.ilike("question", `%${data.search}%`);
     const { data: rows, error } = await q;
     if (error) throw error;
+    type ChapterRel = { id: string; name: string; subjects?: { id: string; name: string } | { id: string; name: string }[] | null };
     type Row = {
       id: string;
       question: string;
@@ -105,18 +106,24 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
       status: string;
       chapter_id: string;
       correct_option: number | null;
-      chapters?: { id: string; name: string; subjects?: { id: string; name: string } | null } | null;
+      chapters?: ChapterRel | ChapterRel[] | null;
     };
-    return (rows as Row[] | null ?? []).map((r) => ({
-      id: r.id,
-      question: r.question,
-      difficulty: r.difficulty,
-      status: r.status,
-      chapter_id: r.chapter_id,
-      correct_option: r.correct_option,
-      chapter_name: r.chapters?.name ?? null,
-      subject_name: r.chapters?.subjects?.name ?? null,
-    }));
+    const list = (rows as unknown as Row[] | null) ?? [];
+    return list.map((r) => {
+      const ch = Array.isArray(r.chapters) ? r.chapters[0] : r.chapters;
+      const sub = ch && Array.isArray(ch.subjects) ? ch.subjects[0] : ch?.subjects ?? null;
+      return {
+        id: r.id,
+        question: r.question,
+        difficulty: r.difficulty,
+        status: r.status,
+        chapter_id: r.chapter_id,
+        correct_option: r.correct_option,
+        chapter_name: ch?.name ?? null,
+        subject_name: sub?.name ?? null,
+      };
+    });
+
 
   });
 
