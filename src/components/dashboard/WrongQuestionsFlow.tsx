@@ -397,24 +397,48 @@ export function WrongQuestionsFlow() {
       if (!res || typeof res.removed !== "number") {
         throw new Error("Delete did not confirm");
       }
-      // Optimistically prune caches for instant count update
+      // 1) Optimistically prune list caches so derived counts drop instantly
       const prune = <T extends { mcq_id: string }>(rows: T[] | undefined) =>
         (rows ?? []).filter((r) => !idSet.has(r.mcq_id));
       qc.setQueriesData({ queryKey: ["mcq-wrong"] }, prune);
       qc.setQueriesData({ queryKey: ["mcq-wrong-all"] }, prune);
-      // Refetch to reconcile with server truth
-      await Promise.all([
-        qc.refetchQueries({ queryKey: ["mcq-wrong"] }),
-        qc.refetchQueries({ queryKey: ["mcq-wrong-all"] }),
-        qc.refetchQueries({ queryKey: ["mcq-review-counts"] }),
-      ]);
+      // 2) Optimistically decrement the dashboard "wrong" count
+      qc.setQueriesData<{ bookmarks: number; wrong: number } | undefined>(
+        { queryKey: ["mcq-review-counts"] },
+        (prev) =>
+          prev ? { ...prev, wrong: Math.max(0, (prev.wrong ?? 0) - res.removed) } : prev,
+      );
+      // 3) Close modal immediately (UI feels instant)
       setReviewItems(null);
       setReviewIdx(0);
+      // 4) Invalidate every dependent key, then force-refetch the active ones
+      //    so the server-truth count overwrites the optimistic value.
+      const dependentKeys = [
+        ["mcq-wrong"],
+        ["mcq-wrong-all"],
+        ["mcq-review-counts"],
+        ["wrong-questions"],
+        ["mcq-wrong-questions"],
+        ["student-dashboard-snapshot"],
+        ["student-daily-progress"],
+        ["student-performance-center"],
+        ["student-completion-tracker"],
+        ["subject-progress"],
+        ["chapter-progress"],
+      ] as const;
+      dependentKeys.forEach((k) => qc.invalidateQueries({ queryKey: k as unknown as string[] }));
+      await Promise.all([
+        qc.refetchQueries({ queryKey: ["mcq-wrong"], type: "active" }),
+        qc.refetchQueries({ queryKey: ["mcq-wrong-all"], type: "active" }),
+        qc.refetchQueries({ queryKey: ["mcq-review-counts"], type: "active" }),
+        qc.refetchQueries({ queryKey: ["student-dashboard-snapshot"], type: "active" }),
+      ]);
       toast.success(`Removed ${res.removed} reviewed question${res.removed === 1 ? "" : "s"}`);
     } catch (err) {
       // Rollback cache snapshots
       prevWrong.forEach(([key, data]) => qc.setQueryData(key, data));
       prevAll.forEach(([key, data]) => qc.setQueryData(key, data));
+      qc.invalidateQueries({ queryKey: ["mcq-review-counts"] });
       toast.error(err instanceof Error ? err.message : "Failed to remove reviewed questions");
     } finally {
       setReviewBusy(false);
