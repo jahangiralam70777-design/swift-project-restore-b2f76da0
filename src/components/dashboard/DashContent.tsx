@@ -213,7 +213,7 @@ export function DashContent() {
               })}
             </p>
             <h1 className="font-display mt-2 text-3xl font-bold sm:text-4xl lg:text-5xl">
-              {greeting()}, {userName.split(" ")[0]}{" "}
+              {greeting()}, {userName}{" "}
               <span className="inline-block animate-float">👋</span>
             </h1>
             <p className="mt-3 max-w-lg text-sm text-white/85 sm:text-base">
