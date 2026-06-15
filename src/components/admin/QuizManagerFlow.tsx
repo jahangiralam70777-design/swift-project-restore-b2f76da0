@@ -67,7 +67,7 @@ import {
 } from "@/lib/admin-quiz.functions";
 
 import { adminListLevels, adminListSubjects, adminListMcqs } from "@/lib/admin-mcq.functions";
-import { adminListChapters } from "@/lib/admin-mcq.functions";
+import { adminListChapters, adminListAllChapters } from "@/lib/admin-mcq.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
