@@ -1858,6 +1858,9 @@ function MockBuilderDialog({
   const [selectedMcqIds, setSelectedMcqIds] = useState<string[]>([]);
   const [mcqSearch, setMcqSearch] = useState("");
   const [difficulty, setDifficulty] = useState<"" | "easy" | "medium" | "hard">("");
+  const [chapterFilter, setChapterFilter] = useState<string>("all");
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+
 
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
