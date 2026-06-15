@@ -582,7 +582,7 @@ function Mini({ label, value }: { label: string; value: number }) {
 }
 
 function BroadcastsInbox() {
-  const { items, unread, markRead } = useMyBroadcasts();
+  const { items, unread, markRead, hide } = useMyBroadcasts();
   const [expanded, setExpanded] = useState(false);
   if (!items.length) return null;
   const sorted = [...items].sort((a, b) => {
@@ -641,14 +641,28 @@ function BroadcastsInbox() {
                   {b.sender_name ?? "Admin"} · {new Date(b.sent_at ?? b.created_at).toLocaleString()}
                 </p>
               </div>
-              {!b.read_at ? (
+              <div className="flex shrink-0 items-center gap-1">
+                {!b.read_at ? (
+                  <button
+                    onClick={() => markRead.mutate(b.recipient_id)}
+                    className="rounded-md border border-border/60 px-2 py-1 text-[10px] text-foreground/80 hover:text-foreground"
+                  >
+                    Mark read
+                  </button>
+                ) : null}
                 <button
-                  onClick={() => markRead.mutate(b.recipient_id)}
-                  className="rounded-md border border-border/60 px-2 py-1 text-[10px] text-foreground/80 hover:text-foreground"
+                  onClick={() => {
+                    if (hide.isPending) return;
+                    if (!window.confirm("Remove this broadcast from your inbox? Other students and admins are not affected.")) return;
+                    hide.mutate(b.recipient_id);
+                  }}
+                  aria-label="Delete broadcast"
+                  title="Delete from my inbox"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-red-500/10 hover:text-red-500"
                 >
-                  Mark read
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
-              ) : null}
+              </div>
             </li>
           );
         })}

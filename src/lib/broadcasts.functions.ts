@@ -530,3 +530,18 @@ export const markBroadcastRead = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Student-side soft delete: hide a broadcast from the current user only.
+// Does not affect the underlying broadcast row or other recipients.
+export const hideBroadcastForMe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => idSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await asAny(context.supabase)
+      .from("broadcast_recipients")
+      .update({ hidden_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

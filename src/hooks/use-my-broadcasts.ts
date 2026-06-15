@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/stores/app-store";
-import { listMyBroadcasts, markBroadcastRead, type MyBroadcast } from "@/lib/broadcasts.functions";
+import { listMyBroadcasts, markBroadcastRead, hideBroadcastForMe, type MyBroadcast } from "@/lib/broadcasts.functions";
 
 export const MY_BROADCASTS_KEY = ["my-broadcasts"] as const;
 
@@ -11,6 +11,7 @@ export function useMyBroadcasts(enabledOpt = true) {
   const qc = useQueryClient();
   const listFn = useServerFn(listMyBroadcasts);
   const markFn = useServerFn(markBroadcastRead);
+  const hideFn = useServerFn(hideBroadcastForMe);
   const sessionReady = useAppStore((s) => s.sessionReady);
   const authLoading = useAppStore((s) => s.authLoading);
   const user = useAppStore((s) => s.user);
@@ -55,7 +56,23 @@ export function useMyBroadcasts(enabledOpt = true) {
     onSettled: () => qc.invalidateQueries({ queryKey: MY_BROADCASTS_KEY }),
   });
 
+  const hide = useMutation({
+    mutationFn: (recipientId: string) => hideFn({ data: { id: recipientId } }),
+    onMutate: async (rid) => {
+      await qc.cancelQueries({ queryKey: MY_BROADCASTS_KEY });
+      const prev = qc.getQueryData<MyBroadcast[]>(MY_BROADCASTS_KEY);
+      qc.setQueryData<MyBroadcast[]>(MY_BROADCASTS_KEY, (old) =>
+        (old ?? []).filter((b) => b.recipient_id !== rid),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(MY_BROADCASTS_KEY, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: MY_BROADCASTS_KEY }),
+  });
+
   const items = q.data ?? [];
   const unread = items.filter((b) => !b.read_at).length;
-  return { items, unread, isLoading: q.isLoading, markRead };
+  return { items, unread, isLoading: q.isLoading, markRead, hide };
 }
