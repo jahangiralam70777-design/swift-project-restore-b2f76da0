@@ -1858,6 +1858,9 @@ function MockBuilderDialog({
   const [selectedMcqIds, setSelectedMcqIds] = useState<string[]>([]);
   const [mcqSearch, setMcqSearch] = useState("");
   const [difficulty, setDifficulty] = useState<"" | "easy" | "medium" | "hard">("");
+  const [chapterFilter, setChapterFilter] = useState<string>("all");
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+
 
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
@@ -1933,9 +1936,6 @@ function MockBuilderDialog({
   function toggleMcq(id: string) {
     setSelectedMcqIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
-  function selectAllMcqs() {
-    setSelectedMcqIds(Array.from(new Set([...selectedMcqIds, ...mcqs.map((m) => m.id)])));
-  }
   function clearMcqs() {
     setSelectedMcqIds([]);
   }
@@ -1991,7 +1991,7 @@ function MockBuilderDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {existing ? "Edit Mock Test" : "Create Mock Test"}
@@ -2149,101 +2149,325 @@ function MockBuilderDialog({
           </div>
         )}
 
-        {/* STEP 2: Questions */}
-        {step === 2 && (
-          <div className="space-y-3">
-            {scope === "chapter" && chapterIds.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Select at least one chapter in Step 1.
-              </p>
-            ) : scope === "subject" && !subjectId ? (
-              <p className="text-sm text-muted-foreground">Select a subject in Step 1.</p>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative min-w-[200px] flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={mcqSearch}
-                      onChange={(e) => setMcqSearch(e.target.value)}
-                      placeholder="Search question text…"
-                      className="h-9 rounded-xl border-white/10 bg-background/60 pl-9"
-                    />
+        {/* STEP 2: Questions — premium MCQ selection */}
+        {step === 2 && (() => {
+          const showEmpty =
+            (scope === "chapter" && chapterIds.length === 0) ||
+            (scope === "subject" && !subjectId);
+          if (showEmpty) {
+            return (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-background/30 p-8 text-center">
+                <BookOpen className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">
+                  {scope === "chapter"
+                    ? "Select at least one chapter in Step 1."
+                    : "Select a subject in Step 1."}
+                </p>
+              </div>
+            );
+          }
+
+          // Distinct chapters in current MCQ pool, for chapter filter.
+          const chapterMap = new Map<string, string>();
+          mcqs.forEach((m) => {
+            const name = (m as { chapter_name?: string | null }).chapter_name;
+            if (m.chapter_id && name) chapterMap.set(m.chapter_id, name);
+          });
+          const chapterOptions = Array.from(chapterMap.entries()).sort((a, b) =>
+            a[1].localeCompare(b[1]),
+          );
+
+          const visibleMcqs = mcqs.filter((m) => {
+            if (chapterFilter !== "all" && m.chapter_id !== chapterFilter) return false;
+            if (showSelectedOnly && !selectedMcqIds.includes(m.id)) return false;
+            return true;
+          });
+
+          const visibleIds = visibleMcqs.map((m) => m.id);
+          const allVisibleSelected =
+            visibleIds.length > 0 && visibleIds.every((id) => selectedMcqIds.includes(id));
+
+          function toggleVisible() {
+            if (allVisibleSelected) {
+              setSelectedMcqIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+            } else {
+              setSelectedMcqIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+            }
+          }
+
+          const totalMarks = selectedMcqIds.length; // 1 mark / MCQ
+          const estMinutes = Math.max(1, Math.ceil((selectedMcqIds.length * 60) / 60));
+
+          const diffStyles: Record<string, string> = {
+            easy: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300",
+            medium: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300",
+            hard: "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-300",
+          };
+
+          return (
+            <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+              {/* Main column — filters + cards */}
+              <div className="space-y-3 min-w-0">
+                {/* Filter bar */}
+                <div className="rounded-2xl border border-white/10 bg-background/40 p-3 backdrop-blur-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative min-w-[200px] flex-1">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={mcqSearch}
+                        onChange={(e) => setMcqSearch(e.target.value)}
+                        placeholder="Search question text…"
+                        className="h-9 rounded-xl border-white/10 bg-background/60 pl-9"
+                      />
+                    </div>
+                    <Select
+                      value={difficulty || "all"}
+                      onValueChange={(v) =>
+                        setDifficulty(v === "all" ? "" : (v as "easy" | "medium" | "hard"))
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[130px] rounded-xl border-white/10 bg-background/60">
+                        <SelectValue placeholder="Difficulty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All difficulty</SelectItem>
+                        <SelectItem value="easy">Easy</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="hard">Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {chapterOptions.length > 1 && (
+                      <Select value={chapterFilter} onValueChange={setChapterFilter}>
+                        <SelectTrigger className="h-9 w-[180px] rounded-xl border-white/10 bg-background/60">
+                          <SelectValue placeholder="Chapter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All chapters</SelectItem>
+                          {chapterOptions.map(([id, name]) => (
+                            <SelectItem key={id} value={id}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <Button
+                      variant={showSelectedOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowSelectedOnly((v) => !v)}
+                      className="h-9 rounded-xl border-white/10"
+                    >
+                      <Filter className="h-3.5 w-3.5" />
+                      {showSelectedOnly ? "Showing selected" : "Selected only"}
+                    </Button>
                   </div>
-                  <Select
-                    value={difficulty || "all"}
-                    onValueChange={(v) =>
-                      setDifficulty(v === "all" ? "" : (v as "easy" | "medium" | "hard"))
-                    }
-                  >
-                    <SelectTrigger className="h-9 w-[140px] rounded-xl border-white/10 bg-background/60">
-                      <SelectValue placeholder="Difficulty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="easy">Easy</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="hard">Hard</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllMcqs}
-                    className="rounded-xl border-white/10"
-                  >
-                    Select all
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearMcqs}
-                    className="rounded-xl border-white/10"
-                  >
-                    Clear
-                  </Button>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>
+                        <strong className="text-foreground">{visibleMcqs.length}</strong> shown
+                      </span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span>
+                        <strong className="text-foreground">{mcqs.length}</strong> in pool
+                      </span>
+                      {mcqsQ.isFetching && <Loader2 className="h-3 w-3 animate-spin" />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={visibleIds.length === 0}
+                        onClick={toggleVisible}
+                        className="h-7 rounded-lg border-white/10 px-2 text-[11px]"
+                      >
+                        {allVisibleSelected ? (
+                          <>
+                            <X className="h-3 w-3" /> Deselect visible
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-3 w-3" /> Select visible
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={selectedMcqIds.length === 0}
+                        onClick={clearMcqs}
+                        className="h-7 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                      >
+                        Clear all
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-background/30 px-3 py-2 text-xs">
-                  <strong>{selectedMcqIds.length}</strong> selected · {mcqs.length} available{" "}
-                  {mcqsQ.isFetching && <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />}
-                </div>
-                <div className="max-h-[360px] overflow-y-auto rounded-xl border border-white/10">
-                  {mcqs.length === 0 && !mcqsQ.isFetching && (
-                    <p className="p-6 text-center text-xs text-muted-foreground">
-                      No MCQs found in selected chapters.
-                    </p>
-                  )}
-                  <ul className="divide-y divide-white/5">
-                    {mcqs.map((m) => {
-                      const checked = selectedMcqIds.includes(m.id);
-                      return (
-                        <li
-                          key={m.id}
-                          onClick={() => toggleMcq(m.id)}
-                          className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-xs transition hover:bg-white/5 ${checked ? "bg-[var(--neon-purple)]/5" : ""}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            readOnly
-                            className="h-3.5 w-3.5 accent-[var(--neon-purple)]"
-                          />
-                          <span className="flex-1 truncate">{m.question}</span>
-                          <Badge
-                            variant="outline"
-                            className="border-white/10 text-[9px] capitalize"
+
+                {/* Cards */}
+                <div className="max-h-[60vh] overflow-y-auto rounded-2xl border border-white/10 bg-background/20 p-3">
+                  {mcqsQ.isFetching && mcqs.length === 0 ? (
+                    <div className="flex items-center justify-center p-10 text-xs text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading questions…
+                    </div>
+                  ) : visibleMcqs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-10 text-center">
+                      <Search className="mb-2 h-8 w-8 text-muted-foreground/40" />
+                      <p className="text-sm font-medium">No matching questions</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Try adjusting your search or filters.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-2.5 sm:grid-cols-1 xl:grid-cols-2">
+                      {visibleMcqs.map((m, idx) => {
+                        const checked = selectedMcqIds.includes(m.id);
+                        const chapterName = (m as { chapter_name?: string | null }).chapter_name;
+                        const subjectName = (m as { subject_name?: string | null }).subject_name;
+                        return (
+                          <button
+                            type="button"
+                            key={m.id}
+                            onClick={() => toggleMcq(m.id)}
+                            aria-pressed={checked}
+                            className={`group relative flex items-start gap-3 rounded-xl border p-3 text-left transition-all duration-200 ${
+                              checked
+                                ? "border-[var(--neon-purple)]/60 bg-[var(--neon-purple)]/10 shadow-glow ring-1 ring-[var(--neon-purple)]/30 scale-[1.01]"
+                                : "border-white/10 bg-background/40 hover:border-white/30 hover:bg-background/60"
+                            }`}
                           >
-                            {m.difficulty}
-                          </Badge>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                            <span
+                              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+                                checked
+                                  ? "border-[var(--neon-purple)] bg-[var(--neon-purple)] text-white"
+                                  : "border-white/20 bg-background/40 group-hover:border-white/40"
+                              }`}
+                            >
+                              {checked && <CheckCircle2 className="h-3.5 w-3.5" />}
+                            </span>
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="line-clamp-3 text-sm font-medium leading-snug">
+                                  <span className="mr-1.5 text-[10px] font-mono text-muted-foreground">
+                                    Q{idx + 1}
+                                  </span>
+                                  {m.question}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                <span
+                                  className={`rounded-md border px-1.5 py-0.5 font-semibold capitalize ${
+                                    diffStyles[m.difficulty] ?? "border-white/10 text-muted-foreground"
+                                  }`}
+                                >
+                                  {m.difficulty}
+                                </span>
+                                {chapterName && (
+                                  <span className="rounded-md border border-white/10 bg-background/60 px-1.5 py-0.5 text-muted-foreground">
+                                    {chapterName}
+                                  </span>
+                                )}
+                                {subjectName && (
+                                  <span className="rounded-md border border-white/10 bg-background/60 px-1.5 py-0.5 text-muted-foreground">
+                                    {subjectName}
+                                  </span>
+                                )}
+                                <span className="ml-auto rounded-md bg-background/60 px-1.5 py-0.5 text-muted-foreground">
+                                  1 mark
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </>
-            )}
-          </div>
-        )}
+              </div>
+
+              {/* Sticky summary panel */}
+              <aside className="lg:sticky lg:top-2 lg:self-start">
+                <div className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-br from-background/80 to-background/40 p-4 shadow-card-soft backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-[var(--neon-purple)]/15 p-1.5">
+                      <Sparkles className="h-4 w-4 text-[var(--neon-purple)]" />
+                    </div>
+                    <h4 className="font-display text-sm font-bold">Selection Summary</h4>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+                    <div className="rounded-xl border border-white/10 bg-background/50 p-3">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Questions
+                      </p>
+                      <p className="font-display text-2xl font-bold tabular-nums">
+                        {selectedMcqIds.length}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-background/50 p-3">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Total marks
+                      </p>
+                      <p className="font-display text-2xl font-bold tabular-nums">{totalMarks}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-background/50 p-3">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Est. duration
+                      </p>
+                      <p className="font-display text-2xl font-bold tabular-nums">
+                        {estMinutes}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">min</span>
+                      </p>
+                    </div>
+                  </div>
+                  {selectedMcqIds.length > 0 && (
+                    <div className="space-y-1.5 rounded-xl border border-white/10 bg-background/40 p-3 text-[11px]">
+                      <p className="font-semibold text-muted-foreground">Difficulty mix</p>
+                      {(["easy", "medium", "hard"] as const).map((d) => {
+                        const count = mcqs.filter(
+                          (m) => selectedMcqIds.includes(m.id) && m.difficulty === d,
+                        ).length;
+                        const pct = selectedMcqIds.length
+                          ? Math.round((count / selectedMcqIds.length) * 100)
+                          : 0;
+                        return (
+                          <div key={d}>
+                            <div className="flex items-center justify-between">
+                              <span className="capitalize text-muted-foreground">{d}</span>
+                              <span className="font-mono">
+                                {count} · {pct}%
+                              </span>
+                            </div>
+                            <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-background/60">
+                              <div
+                                className={`h-full transition-all ${
+                                  d === "easy"
+                                    ? "bg-emerald-500"
+                                    : d === "medium"
+                                      ? "bg-amber-500"
+                                      : "bg-rose-500"
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={selectedMcqIds.length === 0}
+                    onClick={clearMcqs}
+                    className="w-full rounded-xl border-white/10"
+                  >
+                    <X className="h-3.5 w-3.5" /> Clear selection
+                  </Button>
+                </div>
+              </aside>
+            </div>
+          );
+        })()}
+
 
         {/* STEP 3: Settings */}
         {step === 3 && (

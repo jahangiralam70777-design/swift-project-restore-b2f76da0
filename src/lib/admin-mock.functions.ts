@@ -88,7 +88,9 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
     if (chapterIds.length === 0) return [];
     let q = context.supabase
       .from("mcqs")
-      .select("id,question,difficulty,status,chapter_id,correct_option")
+      .select(
+        "id,question,difficulty,status,chapter_id,correct_option,chapters(id,name,subjects(id,name))",
+      )
       .in("chapter_id", chapterIds)
       .order("updated_at", { ascending: false })
       .limit(500);
@@ -96,7 +98,35 @@ export const adminListMcqsForBuilder = createServerFn({ method: "POST" })
     if (data.search) q = q.ilike("question", `%${data.search}%`);
     const { data: rows, error } = await q;
     if (error) throw error;
-    return rows ?? [];
+    type ChapterRel = { id: string; name: string; subjects?: { id: string; name: string } | { id: string; name: string }[] | null };
+    type Row = {
+      id: string;
+      question: string;
+      difficulty: string;
+      status: string;
+      chapter_id: string;
+      correct_option: number | null;
+      chapters?: ChapterRel | ChapterRel[] | null;
+    };
+    const list = (rows as unknown as Row[] | null) ?? [];
+    return list.map((r) => {
+      const ch = Array.isArray(r.chapters) ? r.chapters[0] : r.chapters;
+      const subRaw = ch && Array.isArray(ch.subjects) ? ch.subjects[0] : ch?.subjects ?? null;
+      const sub = (subRaw ?? null) as { id: string; name: string } | null;
+      return {
+        id: r.id,
+        question: r.question,
+        difficulty: r.difficulty,
+        status: r.status,
+        chapter_id: r.chapter_id,
+        correct_option: r.correct_option,
+        chapter_name: ch?.name ?? null,
+        subject_name: sub?.name ?? null,
+      };
+    });
+
+
+
   });
 
 // ---------- Mocks (stored in quizzes with kind='mock') ----------
